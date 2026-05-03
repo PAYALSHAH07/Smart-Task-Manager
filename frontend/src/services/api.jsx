@@ -1,0 +1,107 @@
+const BASE_URL = "http://localhost:5000/api";
+
+/* ================= AUTH ================= */
+
+// 🔐 LOGIN
+export const loginUser = async (data) => {
+  const res = await fetch(`${BASE_URL}/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  return res.json();
+};
+
+// 📝 REGISTER
+export const registerUser = async (data) => {
+  const res = await fetch(`${BASE_URL}/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  return res.json();
+};
+
+
+/* ================= TODOS ================= */
+
+// 📥 GET TODOS
+export const getTodos = async (token) => {
+  const res = await fetch(`${BASE_URL}/todos`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return res.json();
+};
+
+
+// ➕ CREATE TODO (🔥 UPDATED + DEBUG)
+export const createTodo = async (data, token) => {
+  console.log("SENDING TODO:", data); // 🔥 DEBUG
+
+  const res = await fetch(`${BASE_URL}/todos`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      text: data.text,
+      priority: data.priority,
+      dueDate: data.dueDate,
+      urgent: data.urgent,        // 🔥 ENSURE SENT
+      important: data.important,  // 🔥 ENSURE SENT
+    }),
+  });
+
+  return res.json();
+};
+
+
+// ❌ DELETE TODO
+export const deleteTodo = async (id, token) => {
+  const res = await fetch(`${BASE_URL}/todos/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return res.json();
+};
+
+
+// 🔁 TOGGLE TODO
+export const toggleTodo = async (id, token) => {
+  const res = await fetch(`${BASE_URL}/todos/toggle/${id}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return res.json();
+};
+
+
+// ✏️ UPDATE TODO
+export const updateTodo = async (id, data, token) => {
+  const res = await fetch(`${BASE_URL}/todos/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  return res.json();
+};

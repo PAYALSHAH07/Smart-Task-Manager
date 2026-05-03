@@ -1,0 +1,27 @@
+import { useEffect, useState } from "react";
+import { getTodos } from "../services/api";
+
+const useTodo = () => {
+  const [todos, setTodos] = useState([]);
+
+  const fetchTodos = async () => {
+    const token = localStorage.getItem("token"); // 🔥 ALWAYS FRESH
+
+    if (!token) {
+      console.log("No token found");
+      return;
+    }
+
+    const data = await getTodos(token);
+
+    setTodos(Array.isArray(data) ? data : []);
+  };
+
+  useEffect(() => {
+    fetchTodos();
+  }, []);
+
+  return { todos, fetchTodos };
+};
+
+export default useTodo;
