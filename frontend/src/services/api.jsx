@@ -43,9 +43,9 @@ export const getTodos = async (token) => {
 };
 
 
-// ➕ CREATE TODO (🔥 UPDATED + DEBUG)
+// ➕ CREATE TODO
 export const createTodo = async (data, token) => {
-  console.log("SENDING TODO:", data); // 🔥 DEBUG
+  console.log("SENDING TODO:", data);
 
   const res = await fetch(`${BASE_URL}/todos`, {
     method: "POST",
@@ -53,12 +53,17 @@ export const createTodo = async (data, token) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
+
+    // ✅ FIXED
     body: JSON.stringify({
       text: data.text,
       priority: data.priority,
       dueDate: data.dueDate,
-      urgent: data.urgent,        // 🔥 ENSURE SENT
-      important: data.important,  // 🔥 ENSURE SENT
+      urgent: data.urgent,
+      important: data.important,
+
+      // 🔥 THIS WAS MISSING
+      category: data.category,
     }),
   });
 
