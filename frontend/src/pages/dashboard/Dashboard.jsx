@@ -40,11 +40,12 @@ const Dashboard = () => {
   const [filterCategory, setFilterCategory] =
     useState("All");
 
+  // 🔥 STREAK
   const [streak, setStreak] = useState(0);
 
-  // 🔔 NOTIFICATION STATE
+  // 🔔 NOTIFICATION
   const [notificationPermission, setNotificationPermission] =
-    useState("default");
+    useState(Notification.permission);
 
   // =========================
   // 🔔 REQUEST PERMISSION
@@ -71,95 +72,83 @@ const Dashboard = () => {
   };
 
   // =========================
-  // 🔔 CHECK DUE TASKS
+  // 🔔 SMART REMINDER SYSTEM
   // =========================
-  // =========================
-// 🔔 SMART REMINDER SYSTEM
-// =========================
-useEffect(() => {
-  if (Notification.permission !== "granted") {
-    return;
-  }
+  useEffect(() => {
+    if (Notification.permission !== "granted") {
+      return;
+    }
 
-  const interval = setInterval(() => {
-    const now = new Date();
+    const interval = setInterval(() => {
+      const now = new Date();
 
-    todos.forEach((todo) => {
+      todos.forEach((todo) => {
 
-      // ❌ STOP IF COMPLETED
-      if (todo.completed) return;
-
-      // ❌ NO DATE
-      if (!todo.dueDate) return;
-
-      const due = new Date(todo.dueDate);
-
-      // ⏰ HOURS LEFT
-      const hoursLeft =
-        (due.getTime() - now.getTime()) /
-        (1000 * 60 * 60);
-
-      // ✅ ONLY IF TASK IS WITHIN 24 HOURS
-      if (hoursLeft > 0 && hoursLeft <= 24) {
-
-        // 🔥 UNIQUE STORAGE KEY
-        const notificationKey =
-          `notification-${todo._id}`;
-
-        // 🕒 LAST NOTIFICATION TIME
-        const lastNotification =
-          localStorage.getItem(notificationKey);
-
-        const currentTime = Date.now();
-
-        // ✅ FIRST TIME
-        if (!lastNotification) {
-
-          new Notification("⏰ Task Reminder", {
-            body: `${todo.text} is pending`,
-          });
-
-          localStorage.setItem(
-            notificationKey,
-            currentTime
+        if (todo.completed) {
+          localStorage.removeItem(
+            `notification-${todo._id}`
           );
-
           return;
         }
 
-        // ✅ CHECK 1 HOUR GAP
-        const oneHour =
-          60 * 60 * 1000;
+        if (!todo.dueDate) return;
 
-        if (
-          currentTime -
-            Number(lastNotification) >=
-          oneHour
-        ) {
+        const due = new Date(todo.dueDate);
 
-          new Notification("⏰ Task Reminder", {
-            body: `${todo.text} is still pending`,
-          });
+        const hoursLeft =
+          (due.getTime() - now.getTime()) /
+          (1000 * 60 * 60);
 
-          localStorage.setItem(
-            notificationKey,
-            currentTime
-          );
+        if (hoursLeft > 0 && hoursLeft <= 24) {
+
+          const notificationKey =
+            `notification-${todo._id}`;
+
+          const lastNotification =
+            localStorage.getItem(notificationKey);
+
+          const currentTime = Date.now();
+
+          if (!lastNotification) {
+
+            new Notification("⏰ Task Reminder", {
+              body: `${todo.text} is pending`,
+            });
+
+            localStorage.setItem(
+              notificationKey,
+              currentTime
+            );
+
+            return;
+          }
+
+          const oneHour =
+            60 * 60 * 1000;
+
+          if (
+            currentTime -
+              Number(lastNotification) >=
+            oneHour
+          ) {
+
+            new Notification("⏰ Task Reminder", {
+              body: `${todo.text} is still pending`,
+            });
+
+            localStorage.setItem(
+              notificationKey,
+              currentTime
+            );
+          }
         }
-      }
+      });
 
-      // ✅ REMOVE STORAGE WHEN COMPLETED
-      if (todo.completed) {
-        localStorage.removeItem(
-          `notification-${todo._id}`
-        );
-      }
-    });
-  }, 60000); // checks every minute
+    }, 60000);
 
-  return () => clearInterval(interval);
+    return () => clearInterval(interval);
 
-}, [todos]);
+  }, [todos]);
 
   // =========================
   // 📥 FETCH TODOS
@@ -170,44 +159,84 @@ useEffect(() => {
 
     if (!token) return;
 
-    const data = await getTodos(token);
+    try {
+      const data = await getTodos(token);
 
-    const todoArray = Array.isArray(data)
-      ? data
-      : [];
+      const todoArray = Array.isArray(data)
+        ? data
+        : [];
 
-    setTodos(todoArray);
+      setTodos(todoArray);
 
-    // 🔥 STREAK
-    const completedDates = [
-      ...new Set(
-        todoArray
-          .filter((t) => t.completed)
-          .map((t) =>
-            new Date(
-              t.updatedAt
-            ).toDateString()
-          )
-      ),
-    ];
+      // 🔥 IMPROVED STREAK LOGIC
+      const completedDates = [
+        ...new Set(
+          todoArray
+            .filter((t) => t.completed)
+            .map((t) =>
+              new Date(
+                t.updatedAt
+              ).toDateString()
+            )
+        ),
+      ];
 
-    let streakCount = 0;
+      let streakCount = 0;
 
-    let checkDate = new Date();
+      const today = new Date();
 
-    while (
-      completedDates.includes(
-        checkDate.toDateString()
-      )
-    ) {
-      streakCount++;
+      const yesterday = new Date();
 
-      checkDate.setDate(
-        checkDate.getDate() - 1
+      yesterday.setDate(
+        today.getDate() - 1
       );
+
+      let checkDate = new Date(today);
+
+      // ✅ IF TODAY NOT COMPLETED
+      if (
+        !completedDates.includes(
+          today.toDateString()
+        )
+      ) {
+
+        // ✅ CHECK YESTERDAY
+        if (
+          completedDates.includes(
+            yesterday.toDateString()
+          )
+        ) {
+
+          checkDate =
+            new Date(yesterday);
+
+        } else {
+
+          setStreak(0);
+          return;
+        }
+      }
+
+      // ✅ COUNT CONTINUOUS DAYS
+      while (
+        completedDates.includes(
+          checkDate.toDateString()
+        )
+      ) {
+
+        streakCount++;
+
+        checkDate.setDate(
+          checkDate.getDate() - 1
+        );
+      }
+
+      setStreak(streakCount);
+
+    } catch (error) {
+      console.log(error);
     }
 
-    setStreak(streakCount);
   }, []);
 
   useEffect(() => {
@@ -225,9 +254,10 @@ useEffect(() => {
           .includes(
             search.toLowerCase()
           ) &&
-        (filterCategory === "All" ||
-          t.category ===
-            filterCategory)
+        (
+          filterCategory === "All" ||
+          t.category === filterCategory
+        )
     );
   }, [todos, search, filterCategory]);
 
@@ -237,50 +267,68 @@ useEffect(() => {
   const addTodo = async () => {
     if (!text.trim()) return;
 
-    const token =
-      localStorage.getItem("token");
+    try {
+      const token =
+        localStorage.getItem("token");
 
-    await createTodo(
-      {
-        text,
-        dueDate,
-        urgent,
-        important,
-        category,
-      },
-      token
-    );
+      await createTodo(
+        {
+          text,
+          dueDate,
+          urgent,
+          important,
+          category,
+        },
+        token
+      );
 
-    setText("");
-    setUrgent(false);
-    setImportant(false);
-    setDueDate("");
+      setText("");
+      setDueDate("");
+      setUrgent(false);
+      setImportant(false);
+      setCategory("Work");
 
-    fetchTodos();
+      fetchTodos();
+
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   // =========================
   // ❌ DELETE TODO
   // =========================
   const removeTodo = async (id) => {
-    await deleteTodo(
-      id,
-      localStorage.getItem("token")
-    );
+    try {
 
-    fetchTodos();
+      await deleteTodo(
+        id,
+        localStorage.getItem("token")
+      );
+
+      fetchTodos();
+
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   // =========================
   // ✅ TOGGLE TODO
   // =========================
   const handleToggle = async (id) => {
-    await toggleTodo(
-      id,
-      localStorage.getItem("token")
-    );
+    try {
 
-    fetchTodos();
+      await toggleTodo(
+        id,
+        localStorage.getItem("token")
+      );
+
+      fetchTodos();
+
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   return (
@@ -298,29 +346,26 @@ useEffect(() => {
           </h1>
 
           <p className="text-slate-400 mt-1 text-lg">
-            Your productivity summary
-            today 🚀
+            Your productivity summary today 🚀
           </p>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap">
 
           {/* 🔥 STREAK */}
-          <div className="flex items-center gap-4 bg-slate-800/50 p-3 rounded-2xl border border-slate-700/50">
+          <div className="bg-slate-800/50 border border-slate-700 px-5 py-3 rounded-2xl text-center">
 
-            <div className="px-5 text-center">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-orange-500 font-bold">
-                Streak
-              </p>
+            <p className="text-xs text-orange-400 uppercase tracking-widest">
+              Streak
+            </p>
 
-              <p className="text-2xl font-black text-white">
-                {streak} 🔥
-              </p>
-            </div>
+            <h2 className="text-2xl font-black text-white">
+              {streak} 🔥
+            </h2>
 
           </div>
 
-          {/* 🔔 NOTIFICATION BUTTON */}
+          {/* 🔔 NOTIFICATION */}
           <button
             onClick={
               requestNotificationPermission
@@ -341,7 +386,7 @@ useEffect(() => {
 
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        {/* LEFT SIDE */}
+        {/* LEFT */}
         <div className="lg:col-span-8 space-y-6">
 
           {/* ADD TASK */}
@@ -349,7 +394,8 @@ useEffect(() => {
 
             <div className="flex flex-col gap-4">
 
-              <div className="flex gap-3">
+              {/* INPUT */}
+              <div className="flex gap-3 flex-col md:flex-row">
 
                 <input
                   value={text}
@@ -362,7 +408,7 @@ useEffect(() => {
 
                 <button
                   onClick={addTodo}
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-8 rounded-xl font-bold flex items-center gap-2"
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2"
                 >
                   <FiPlus />
                   Add
@@ -475,7 +521,7 @@ useEffect(() => {
             </div>
 
             {/* FILTER */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
 
               <FiFilter className="text-slate-600 mt-2 mr-1" />
 
@@ -505,71 +551,129 @@ useEffect(() => {
           </div>
 
           {/* TASK LIST */}
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+
+            {filteredTodos.length === 0 && (
+              <div className="col-span-full bg-slate-800/40 border border-slate-700 rounded-3xl p-10 text-center text-slate-400">
+                No tasks found 🚀
+              </div>
+            )}
 
             {filteredTodos.map((t) => (
 
               <div
                 key={t._id}
-                className="group flex items-center justify-between bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/40 p-4 rounded-2xl transition-all"
+                className={`relative overflow-hidden rounded-3xl border transition-all duration-300 min-h-[260px]
+                ${
+                  t.completed
+                    ? "bg-slate-800/40 border-slate-700"
+                    : "bg-slate-800/70 border-slate-700 hover:border-blue-500 hover:-translate-y-1"
+                }`}
               >
 
-                <div className="flex items-center gap-4">
+                {/* TOP BAR */}
+                <div
+                  className={`h-2 w-full
+                  ${
+                    t.urgent && t.important
+                      ? "bg-red-500"
+                      : t.important
+                      ? "bg-yellow-500"
+                      : t.urgent
+                      ? "bg-blue-500"
+                      : "bg-slate-600"
+                  }`}
+                />
 
-                  <button
-                    onClick={() =>
-                      handleToggle(t._id)
-                    }
-                    className={`text-2xl ${
-                      t.completed
-                        ? "text-green-500"
-                        : "text-slate-600"
-                    }`}
-                  >
-                    <FiCheckCircle />
-                  </button>
+                <div className="p-5 flex flex-col justify-between h-full">
 
                   <div>
 
-                    <p
-                      className={`font-medium text-lg ${
+                    {/* TOP */}
+                    <div className="flex items-start justify-between gap-3">
+
+                      <button
+                        onClick={() =>
+                          handleToggle(t._id)
+                        }
+                        className={`text-2xl transition-all
+                        ${
+                          t.completed
+                            ? "text-green-500"
+                            : "text-slate-500 hover:text-green-400"
+                        }`}
+                      >
+                        <FiCheckCircle />
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          removeTodo(t._id)
+                        }
+                        className="p-2 rounded-xl bg-slate-700/40 text-slate-400 hover:bg-red-500/20 hover:text-red-400 transition-all"
+                      >
+                        <FiTrash2 size={18} />
+                      </button>
+
+                    </div>
+
+                    {/* TITLE */}
+                    <h3
+                      className={`text-xl font-bold mt-5 break-words
+                      ${
                         t.completed
                           ? "line-through text-slate-500"
-                          : "text-slate-200"
+                          : "text-white"
                       }`}
                     >
                       {t.text}
-                    </p>
+                    </h3>
 
-                    <div className="flex gap-3 mt-1">
+                    {/* BADGES */}
+                    <div className="mt-4 flex flex-wrap gap-2">
 
-                      <span className="text-[11px] text-slate-500">
+                      <span className="px-3 py-1 rounded-full text-xs bg-slate-700 text-slate-300">
                         {t.category}
                       </span>
 
-                      <span className="text-[11px] text-slate-500">
-                        {t.dueDate
-                          ? new Date(
-                              t.dueDate
-                            ).toLocaleDateString()
-                          : "No Date"}
-                      </span>
+                      {t.urgent && (
+                        <span className="px-3 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                          Urgent
+                        </span>
+                      )}
+
+                      {t.important && (
+                        <span className="px-3 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                          Important
+                        </span>
+                      )}
+
+                      {t.completed && (
+                        <span className="px-3 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+                          Completed
+                        </span>
+                      )}
 
                     </div>
 
                   </div>
 
-                </div>
+                  {/* DATE */}
+                  <div className="mt-6 flex items-center gap-2 text-sm text-slate-400">
 
-                {/* DELETE */}
-                <button
-                  onClick={() =>
-                    removeTodo(t._id)
-                  }
-                  className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-red-500 transition-all"
-                >
-                  <FiTrash2 size={18} />
-                </button>
+                    <FiCalendar size={14} />
+
+                    <span>
+                      {t.dueDate
+                        ? new Date(
+                            t.dueDate
+                          ).toLocaleDateString()
+                        : "No Deadline"}
+                    </span>
+
+                  </div>
+
+                </div>
 
               </div>
             ))}
