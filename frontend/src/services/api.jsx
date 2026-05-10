@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5000/api";
+const BASE_URL = "https://smart-task-manager-o4a6.onrender.com/api";
 
 /* ================= AUTH ================= */
 
